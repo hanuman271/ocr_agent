@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Bill OCR Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .preview-img {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 10px;
+        }
+        .loader {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .receipt-details {
+            margin-bottom: 15px;
+        }
+        .receipt-details p {
+            margin: 5px 0;
+        }
+        .receipt-total {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 15px;
+        }
+        #error-message {
+            color: red;
+            display: none;
+        }
+        #result-section {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Restaurant Bill OCR Analyzer</h1>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Upload Receipt Image</h2>
+            <p>Enter the URL of a restaurant bill image:</p>
+            <input type="text" id="image-url" placeholder="https://example.com/restaurant-bill.jpg">
+            <button id="analyze-btn">Analyze Receipt</button>
+            
+            <div id="preview-container">
+                <h3>Image Preview</h3>
+                <img id="preview-img" class="preview-img" src="" alt="Image preview will appear here">
+            </div>
+        </div>
+
+        <div id="error-message" class="card"></div>
+        
+        <div id="loader" class="loader"></div>
+        
+        <div id="result-section" class="card">
+            <h2>OCR Results</h2>
+            
+            <div class="receipt-details">
+                <h3>Restaurant Information</h3>
+                <p><strong>Restaurant:</strong> <span id="restaurant-name"></span></p>
+                <p><strong>Date:</strong> <span id="receipt-date"></span></p>
+                <p><strong>Time:</strong> <span id="receipt-time"></span></p>
+            </div>
+            
+            <div class="receipt-items">
+                <h3>Items</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-table"></tbody>
+                </table>
+            </div>
+            
+            <div class="receipt-total">
+                <p><strong>Total Amount:</strong> <span id="total-amount"></span></p>
+            </div>
+            
+            <div class="json-data">
+                <h3>Raw JSON Response</h3>
+                <pre id="json-response"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageUrlInput = document.getElementById('image-url');
+            const previewImg = document.getElementById('preview-img');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const loader = document.getElementById('loader');
+            const resultSection = document.getElementById('result-section');
+            const errorMessage = document.getElementById('error-message');
+            
+            // Preview image when URL changes
+            imageUrlInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url) {
+                    previewImg.src = url;
+                    previewImg.onerror = function() {
+                        this.src = '';
+                        this.alt = 'Invalid image URL';
+                    };
+                }
+            });
+            
+            // Handle analyze button click
+            analyzeBtn.addEventListener('click', async function() {
+                const imageUrl = imageUrlInput.value.trim();
+                
+                if (!imageUrl) {
+                    showError('Please enter an image URL');
+                    return;
+                }
+                
+                // Show loader and hide results
+                loader.style.display = 'block';
+                resultSection.style.display = 'none';
+                errorMessage.style.display = 'none';
+                
+                try {
+                    // Call the API endpoint
+                    const local = "http://localhost:8000";
+                    const prod = "https://fluffy-helyn-hanumansingh-58f8ad9d.koyeb.app";
+                    const response = await fetch(`${local}/ocr?image_url=${encodeURIComponent(imageUrl)}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    displayResults(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError(`Failed to process the image: ${error.message}`);
+                } finally {
+                    loader.style.display = 'none';
+                }
+            });
+            
+            function displayResults(data) {
+                // Fill in restaurant details
+                document.getElementById('restaurant-name').textContent = data.Restaurant || 'Unknown';
+                document.getElementById('receipt-date').textContent = data.Date || 'Unknown';
+                document.getElementById('receipt-time').textContent = data.Time || 'Unknown';
+                
+                // Fill in items table
+                const itemsTable = document.getElementById('items-table');
+                itemsTable.innerHTML = ''; // Clear existing rows
+                
+                if (data.Items && data.Items.length > 0) {
+                    data.Items.forEach(item => {
+                        const row = document.createElement('tr');
+                        
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = item.Name || 'Unknown';
+                        
+                        const quantityCell = document.createElement('td');
+                        quantityCell.textContent = item.Quantity || 'Unknown';
+                        
+                        const priceCell = document.createElement('td');
+                        priceCell.textContent = item.Price || 'Unknown';
+                        
+                        row.appendChild(nameCell);
+                        row.appendChild(quantityCell);
+                        row.appendChild(priceCell);
+                        itemsTable.appendChild(row);
+                    });
+                } else {
+                    const row = document.createElement('tr');
+                    const emptyCell = document.createElement('td');
+                    emptyCell.colSpan = 3;
+                    emptyCell.textContent = 'No items found';
+                    row.appendChild(emptyCell);
+                    itemsTable.appendChild(row);
+                }
+                
+                // Fill in total
+                document.getElementById('total-amount').textContent = data.Total || 'Unknown';
+                
+                // Show raw JSON
+                document.getElementById('json-response').textContent = JSON.stringify(data, null, 2);
+                
+                // Show results section
+                resultSection.style.display = 'block';
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -17,13 +17,14 @@ origins = [
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "*",  # REMOVE IN PRODUCTION
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -93,5 +94,5 @@ def ocr_agent(image_url:str):
     return extract_json(results)
 
 
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000)
+# if __name__ == "__main__":
+#     uvicorn.run("app:app", host="0.0.0.0", port=8000)
