@@ -1,33 +1,15 @@
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 load_dotenv()
 import json
 import re
-
-from groq import Groq
 import os
 
-app = FastAPI()
+from groq import Groq
 
-# CORS configuration
-origins = [
-    "http://localhost",
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "*",  # REMOVE IN PRODUCTION
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = Flask(__name__)
+CORS(app)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
@@ -39,8 +21,9 @@ def extract_json(results):
     return result
 
 
-@app.get("/ocr")
-def ocr_agent(image_url:str):
+@app.route("/ocr", methods=["GET"])
+def ocr_agent():
+    image_url = request.args.get("image_url")
     
     completion = client.chat.completions.create(
         model="llama-3.2-90b-vision-preview",
@@ -91,8 +74,8 @@ def ocr_agent(image_url:str):
     
     results = completion.choices[0].message.content
     
-    return extract_json(results)
+    return jsonify(extract_json(results))
 
 
-# if __name__ == "__main__":
-#     uvicorn.run("app:app", host="0.0.0.0", port=8000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=True)
