@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-
+from dotenv import load_dotenv
+load_dotenv()
 import json
 import re
 
