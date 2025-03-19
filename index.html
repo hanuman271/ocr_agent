@@ -191,7 +191,7 @@
                     // Call the API endpoint
                     const local = "http://localhost:8000";
                     const prod = "https://fluffy-helyn-hanumansingh-58f8ad9d.koyeb.app/";
-                    const response = await fetch(`${prod}/ocr?image_url=${encodeURIComponent(imageUrl)}`);
+                    const response = await fetch(`${local}/ocr?image_url=${encodeURIComponent(imageUrl)}`);
                     
                     if (!response.ok) {
                         throw new Error(`Error: ${response.status} - ${response.statusText}`);
